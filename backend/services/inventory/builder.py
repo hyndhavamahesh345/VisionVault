@@ -52,6 +52,7 @@ CANONICAL = {
     "projector": "projector", "chimney": "chimney",
 }
 
+
 def normalize_object_name(raw_name: str) -> Optional[str]:
     if raw_name is None:
         return None
@@ -68,6 +69,7 @@ def normalize_object_name(raw_name: str) -> Optional[str]:
             return CANONICAL.get(obj, obj)
 
     return name
+
 
 def merge_detections(detections_per_frame: List[List[str]]) -> List[Dict]:
     max_counts: Dict[str, int] = {}

@@ -21,4 +21,4 @@ celery_app.conf.update(
 )
 
 # Import tasks so Celery discovers them
-import worker.tasks
+import worker.tasks  # noqa: E402, F401

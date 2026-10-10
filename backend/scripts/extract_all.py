@@ -3,7 +3,8 @@ from pathlib import Path
 import os
 import shutil
 
-videos_dir = Path(r"C:\Users\SOBHASREE SADU\OneDrive\Desktop\New folder (3)\videos")
+videos_dir = Path(
+    r"C:\Users\SOBHASREE SADU\OneDrive\Desktop\New folder (3)\videos")
 output_dir = Path("dataset/images/train")
 
 if not videos_dir.exists():
@@ -23,28 +24,28 @@ for idx, video_path in enumerate(video_files):
     if not cap.isOpened():
         print(f"Failed to open {video_path.name}")
         continue
-    
+
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps <= 0:
-        fps = 30 # fallback
-    
-    frame_interval = int(fps * 1) # 1 frame per second
-    
+        fps = 30  # fallback
+
+    frame_interval = int(fps * 1)  # 1 frame per second
+
     frame_count = 0
     extracted = 0
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-            
+
         if frame_count % frame_interval == 0:
             out_path = output_dir / f"vid_{idx}_f{frame_count}.jpg"
             cv2.imwrite(str(out_path), frame)
             extracted += 1
             total_frames += 1
-            
+
         frame_count += 1
-        
+
     cap.release()
     print(f"  Extracted {extracted} frames from {video_path.name}")
 

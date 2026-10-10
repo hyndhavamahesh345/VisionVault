@@ -18,6 +18,12 @@ env/
 *.onnx
 *.bin
 *.safetensors
+*.part
+backend/weights/
+
+# ── Database ──────────────────────────────────────────────────────────────────
+*.db
+*.sqlite3
 
 # ── HuggingFace cache ─────────────────────────────────────────────────────────
 .cache/
@@ -30,6 +36,7 @@ backend/output/
 backend/dataset/
 backend/runs/
 backend/static/previews/
+backend/static/annotated/
 
 # ── Frontend build output ─────────────────────────────────────────────────────
 frontend/dist/
@@ -44,3 +51,4 @@ Thumbs.db
 # ── Test files ────────────────────────────────────────────────────────────────
 backend/test_pipeline.py
 backend/test_gemini.py
+

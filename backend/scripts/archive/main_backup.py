@@ -40,11 +40,12 @@ for d in [UPLOAD_DIR, FRAMES_DIR, OUTPUT_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # ── API / Model Config ────────────────────────────────────────────────────────
-USE_HYBRID         = os.getenv("USE_HYBRID", "true").lower() == "true"
-USE_GROUNDINGDINO  = False # os.getenv("USE_GROUNDINGDINO", "true").lower() == "true"
-FLORENCE_MODEL     = os.getenv("FLORENCE_MODEL", "microsoft/Florence-2-base")
+USE_HYBRID = os.getenv("USE_HYBRID", "true").lower() == "true"
+# os.getenv("USE_GROUNDINGDINO", "true").lower() == "true"
+USE_GROUNDINGDINO = False
+FLORENCE_MODEL = os.getenv("FLORENCE_MODEL", "microsoft/Florence-2-base")
 
-FAST_MODE    = os.getenv("FAST_MODE", "false").lower() == "true"
+FAST_MODE = os.getenv("FAST_MODE", "false").lower() == "true"
 YOLO_WEIGHTS = os.getenv("YOLO_WEIGHTS", "yolo11s.pt")
 
 if FAST_MODE:
@@ -60,9 +61,10 @@ else:
 default_max_frames = "6"
 default_frame_quality = "60" if FAST_MODE else "80"
 
-MAX_FRAMES                = int(os.getenv("MAX_FRAMES", default_max_frames))
-FRAME_INTERVAL_SEC        = float(os.getenv("FRAME_INTERVAL_SEC", "5.0" if FAST_MODE else "3.0"))
-FRAME_QUALITY             = int(os.getenv("FRAME_QUALITY", default_frame_quality))
+MAX_FRAMES = int(os.getenv("MAX_FRAMES", default_max_frames))
+FRAME_INTERVAL_SEC = float(
+    os.getenv("FRAME_INTERVAL_SEC", "5.0" if FAST_MODE else "3.0"))
+FRAME_QUALITY = int(os.getenv("FRAME_QUALITY", default_frame_quality))
 
 # Verification parameters
 YOLO_CONF_THRESHOLD = float(os.getenv("YOLO_CONF", "0.08"))
@@ -86,6 +88,7 @@ _groundingdino_lock = threading.Lock()
 # ── YOLO Model (Lazy-loaded once) ─────────────────────────────────────────────
 _yolo_model = None
 
+
 def get_yolo_model():
     global _yolo_model
     if _yolo_model is None:
@@ -97,16 +100,20 @@ def get_yolo_model():
                     _yolo_model = YOLO(YOLO_WEIGHTS)
                     if "world" in YOLO_WEIGHTS.lower():
                         _yolo_model.set_classes(HOUSEHOLD_OBJECTS)
-                        logger.info("[YOLO-World] Configured custom vocabulary with %d items.", len(HOUSEHOLD_OBJECTS))
-                    logger.info("[YOLO] Model loaded successfully: %s", YOLO_WEIGHTS)
+                        logger.info(
+                            "[YOLO-World] Configured custom vocabulary with %d items.", len(HOUSEHOLD_OBJECTS))
+                    logger.info(
+                        "[YOLO] Model loaded successfully: %s", YOLO_WEIGHTS)
                 except Exception as e:
                     logger.exception("[YOLO] Failed to load model: %s", e)
                     _yolo_model = None
     return _yolo_model
 
+
 # ── GroundingDINO Fallback (Lazy-loaded Florence-2 on CPU/GPU) ────────────────
 _groundingdino_model = None
 _groundingdino_processor = None
+
 
 def get_groundingdino_model():
     global _groundingdino_model, _groundingdino_processor
@@ -116,9 +123,10 @@ def get_groundingdino_model():
                 try:
                     import torch
                     from transformers import AutoProcessor, AutoModelForCausalLM
-                    logger.info("[GroundingDINO] Loading %s for phrase grounding...", FLORENCE_MODEL)
+                    logger.info(
+                        "[GroundingDINO] Loading %s for phrase grounding...", FLORENCE_MODEL)
                     device = "cuda" if torch.cuda.is_available() else "cpu"
-                    dtype  = torch.float16 if device == "cuda" else torch.float32
+                    dtype = torch.float16 if device == "cuda" else torch.float32
                     _groundingdino_processor = AutoProcessor.from_pretrained(
                         FLORENCE_MODEL, trust_remote_code=True
                     )
@@ -126,12 +134,14 @@ def get_groundingdino_model():
                         FLORENCE_MODEL, torch_dtype=dtype, trust_remote_code=True
                     ).to(device)
                     _groundingdino_model.eval()
-                    logger.info("[GroundingDINO] Model successfully loaded on %s", device)
+                    logger.info(
+                        "[GroundingDINO] Model successfully loaded on %s", device)
                 except Exception as e:
                     logger.exception("[GroundingDINO] Failed to load: %s", e)
                     _groundingdino_model = None
                     _groundingdino_processor = None
     return (_groundingdino_model, _groundingdino_processor) if _groundingdino_model is not None else (None, None)
+
 
 # ── Household Vocabulary ──────────────────────────────────────────────────────
 HOUSEHOLD_OBJECTS = [
@@ -204,6 +214,7 @@ CANONICAL = {
     "human face": None, "face": None, "person": None,
 }
 
+
 def normalize_object_name(raw_name: str) -> Optional[str]:
     """
     Normalizes a detected label by cleaning, applying canonical mappings,
@@ -242,6 +253,7 @@ class InventoryItem(BaseModel):
 #  API ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @app.post("/api/upload")
 async def upload_video(file: UploadFile = File(...)):
     if not file.filename:
@@ -249,7 +261,8 @@ async def upload_video(file: UploadFile = File(...)):
     allowed = [".mp4", ".mov", ".avi", ".mkv", ".webm"]
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed:
-        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {allowed}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid file type. Allowed: {allowed}")
 
     job_id = str(uuid.uuid4())
     video_path = UPLOAD_DIR / f"{job_id}{ext}"
@@ -268,7 +281,8 @@ async def upload_video(file: UploadFile = File(...)):
 
     # Threading loop running in background
     import threading
-    t = threading.Thread(target=process_video, args=(job_id, str(video_path)), daemon=True)
+    t = threading.Thread(target=process_video, args=(
+        job_id, str(video_path)), daemon=True)
     t.start()
 
     return {"job_id": job_id, "message": "Processing started"}
@@ -340,6 +354,7 @@ async def health():
 #  VIDEO PROCESSING PIPELINE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def process_video(job_id: str, video_path: str):
     try:
         # ── Stage 1: extracting frames ────────────────────────────────────────
@@ -358,10 +373,12 @@ def process_video(job_id: str, video_path: str):
         processing_jobs[job_id]["status"] = "analyzing"
 
         if USE_HYBRID:
-            pipeline_name, all_detections = run_hybrid_pipeline(job_id, video_path, frames)
+            pipeline_name, all_detections = run_hybrid_pipeline(
+                job_id, video_path, frames)
             flat_count = sum(len(f) for f in all_detections)
             if flat_count == 0:
-                logger.info("[%s] Hybrid pipeline returned 0 detections. Falling back to simulated/mock detections.", job_id)
+                logger.info(
+                    "[%s] Hybrid pipeline returned 0 detections. Falling back to simulated/mock detections.", job_id)
                 pipeline_name = "hybrid + simulated fallback"
                 all_detections = run_simulated_pipeline(job_id, frames)
         else:
@@ -370,7 +387,8 @@ def process_video(job_id: str, video_path: str):
 
         processing_jobs[job_id]["pipeline"] = pipeline_name
         flat_count = sum(len(f) for f in all_detections)
-        logger.info("[%s] Pipeline: %s | Raw detections: %d", job_id, pipeline_name, flat_count)
+        logger.info("[%s] Pipeline: %s | Raw detections: %d",
+                    job_id, pipeline_name, flat_count)
 
         # ── Stage 3: merge & save ─────────────────────────────────────────────
         processing_jobs[job_id]["status"] = "merging"
@@ -410,7 +428,7 @@ def extract_frames(job_id: str, video_path: str) -> List[str]:
     frames_dir.mkdir(parents=True, exist_ok=True)
 
     cap = cv.VideoCapture(video_path)
-    fps   = cap.get(cv.CAP_PROP_FPS) or 30
+    fps = cap.get(cv.CAP_PROP_FPS) or 30
     total = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
     duration = total / fps
 
@@ -429,14 +447,17 @@ def extract_frames(job_id: str, video_path: str) -> List[str]:
             # Downscale for efficiency
             if w > 640:
                 scale = 640 / w
-                frame = cv.resize(frame, (640, int(h * scale)), interpolation=cv.INTER_AREA)
-            cv.imwrite(str(path), frame, [cv.IMWRITE_JPEG_QUALITY, FRAME_QUALITY])
+                frame = cv.resize(frame, (640, int(h * scale)),
+                                  interpolation=cv.INTER_AREA)
+            cv.imwrite(str(path), frame, [
+                       cv.IMWRITE_JPEG_QUALITY, FRAME_QUALITY])
             frames.append(str(path))
             saved += 1
         count += 1
 
     cap.release()
-    logger.info("[extract] %d frames from %.1fs @ %.1ffps (max %d)", len(frames), duration, fps, MAX_FRAMES)
+    logger.info("[extract] %d frames from %.1fs @ %.1ffps (max %d)",
+                len(frames), duration, fps, MAX_FRAMES)
     return frames
 
 
@@ -491,6 +512,7 @@ def enhance_frame_for_detection(frame_path: str):
 #  YOLO + HIGH-RECALL CUSTOM IoU TRACKING PIPELINE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _bbox_iou(a: List[float], b: List[float]) -> float:
     """Calculate Intersection over Union (IoU) of two bounding boxes."""
     xa1, ya1, xa2, ya2 = a
@@ -518,7 +540,8 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
     if USE_GROUNDINGDINO:
         gd_model, gd_processor = get_groundingdino_model()
 
-    sub = "yolo11s + groundingdino + custom_iou_tracking" if (gd_model is not None) else "yolo11s + custom_iou_tracking"
+    sub = "yolo11s + groundingdino + custom_iou_tracking" if (
+        gd_model is not None) else "yolo11s + custom_iou_tracking"
 
     # Frame Quality Filters
     filtered_frames: List[str] = []
@@ -532,13 +555,16 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
         else:
             filtered_reasons[frame_path] = reasons
 
-    logger.info("[%s] Frames extracted: %d, after quality filter: %d", job_id, len(frames), len(filtered_frames))
+    logger.info("[%s] Frames extracted: %d, after quality filter: %d",
+                job_id, len(frames), len(filtered_frames))
     if filtered_reasons:
         sample_path, sample_reasons = next(iter(filtered_reasons.items()))
-        logger.info("[%s] Sample rejected frame: %s -> %s", job_id, sample_path, sample_reasons)
+        logger.info("[%s] Sample rejected frame: %s -> %s",
+                    job_id, sample_path, sample_reasons)
 
     if not filtered_frames:
-        logger.warning("[%s] No frames passed quality filter — returning empty inventory", job_id)
+        logger.warning(
+            "[%s] No frames passed quality filter — returning empty inventory", job_id)
         return sub, [[] for _ in frames]
 
     # track_states accumulates physical objects across frames.
@@ -562,18 +588,23 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
             boxes = getattr(result, "boxes", None)
 
             if boxes is not None and len(boxes) > 0:
-                cls_ids = boxes.cls.int().tolist() if getattr(boxes, "cls", None) is not None else []
+                cls_ids = boxes.cls.int().tolist() if getattr(
+                    boxes, "cls", None) is not None else []
                 confs = boxes.conf.tolist() if getattr(boxes, "conf", None) is not None else []
                 xyxys = boxes.xyxy.tolist() if getattr(boxes, "xyxy", None) is not None else []
 
                 for det_idx, cls_idx in enumerate(cls_ids):
-                    conf = float(confs[det_idx]) if det_idx < len(confs) else 0.0
-                    bbox = xyxys[det_idx] if det_idx < len(xyxys) else [0.0, 0.0, 0.0, 0.0]
+                    conf = float(confs[det_idx]) if det_idx < len(
+                        confs) else 0.0
+                    bbox = xyxys[det_idx] if det_idx < len(
+                        xyxys) else [0.0, 0.0, 0.0, 0.0]
 
                     if isinstance(result.names, dict):
-                        raw_name = str(result.names.get(int(cls_idx), str(cls_idx))).lower()
+                        raw_name = str(result.names.get(
+                            int(cls_idx), str(cls_idx))).lower()
                     else:
-                        raw_name = str(result.names[int(cls_idx)]).lower() if 0 <= int(cls_idx) < len(result.names) else str(cls_idx).lower()
+                        raw_name = str(result.names[int(cls_idx)]).lower() if 0 <= int(
+                            cls_idx) < len(result.names) else str(cls_idx).lower()
 
                     mapped = normalize_object_name(raw_name)
                     if mapped:
@@ -582,7 +613,8 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
             # 2. Dual-Engine GroundingDINO (Florence-2) phrase-grounding for non-COCO items on subset of frames (max 15 frames)
             gd_step = max(1, len(filtered_frames) // 15)
             if gd_model and gd_processor and (fi % gd_step == 0):
-                gd_detections = run_groundingdino_on_frame(frame_path, gd_model, gd_processor)
+                gd_detections = run_groundingdino_on_frame(
+                    frame_path, gd_model, gd_processor)
                 for label, bbox in gd_detections:
                     # Provide actual bounding box and set baseline confidence (0.50)
                     frame_detections.append((label, bbox, 0.50))
@@ -621,7 +653,8 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
                     state["best_conf"] = conf
 
         except Exception as e:
-            logger.exception("[%s] Dual-Engine error on frame %d (%s): %s", job_id, fi, frame_path, e)
+            logger.exception(
+                "[%s] Dual-Engine error on frame %d (%s): %s", job_id, fi, frame_path, e)
 
     # Temporal Consensus validation
     accepted_track_ids: set[int] = set()
@@ -649,7 +682,8 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
 
     any_valid = any(len(frame_labels) > 0 for frame_labels in final_frames)
     if not any_valid:
-        logger.info("[%s] No stable detections after custom IoU tracking — returning empty inventory", job_id)
+        logger.info(
+            "[%s] No stable detections after custom IoU tracking — returning empty inventory", job_id)
         return sub, [[] for _ in frames]
 
     logger.info("[%s] Accepted tracks: %d", job_id, len(accepted_track_ids))
@@ -659,7 +693,8 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
 def run_yolo_on_frame(model, frame_path: str) -> List[str]:
     """Run YOLO inference on a single frame (for diagnostics compatibility)."""
     try:
-        results = model(frame_path, verbose=False, conf=YOLO_CONF_THRESHOLD, imgsz=YOLO_INFER_IMGSZ)
+        results = model(frame_path, verbose=False,
+                        conf=YOLO_CONF_THRESHOLD, imgsz=YOLO_INFER_IMGSZ)
         names: List[str] = []
         for r in results:
             cls_ids = []
@@ -671,7 +706,8 @@ def run_yolo_on_frame(model, frame_path: str) -> List[str]:
                 except Exception:
                     cls_ids = []
             for cls_id in cls_ids:
-                raw_name = r.names.get(cls_id, str(cls_id)).lower() if isinstance(r.names, dict) else r.names[int(cls_id)].lower()
+                raw_name = r.names.get(cls_id, str(cls_id)).lower() if isinstance(
+                    r.names, dict) else r.names[int(cls_id)].lower()
                 mapped = normalize_object_name(raw_name)
                 if mapped:
                     names.append(mapped)
@@ -699,7 +735,8 @@ def run_groundingdino_on_frame(frame_path: str, model, processor) -> List[Tuple[
         inputs = processor(text=prompt, images=image, return_tensors="pt")
         device = next(model.parameters()).device
         dtype = next(model.parameters()).dtype
-        inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+        inputs = {k: v.to(device) if hasattr(v, "to")
+                  else v for k, v in inputs.items()}
         if "pixel_values" in inputs:
             inputs["pixel_values"] = inputs["pixel_values"].to(dtype)
 
@@ -713,7 +750,8 @@ def run_groundingdino_on_frame(frame_path: str, model, processor) -> List[Tuple[
                 num_beams=3
             )
 
-        generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+        generated_text = processor.batch_decode(
+            generated_ids, skip_special_tokens=False)[0]
         results = processor.post_process_generation(
             generated_text,
             task="<OD>",
@@ -748,7 +786,8 @@ def run_groundingdino_on_frame(frame_path: str, model, processor) -> List[Tuple[
                 detections.append((mapped, bbox))
         return detections
     except Exception as e:
-        logger.exception("[GroundingDINO] OD Inference failed on %s: %s", frame_path, e)
+        logger.exception(
+            "[GroundingDINO] OD Inference failed on %s: %s", frame_path, e)
         return []
 
 
@@ -769,12 +808,14 @@ def run_groundingdino_fallback(
 
     detections_per_frame = []
     for frame_idx, frame_path in candidate_frames:
-        detections = [label for label, bbox in run_groundingdino_on_frame(frame_path, model, processor)]
+        detections = [label for label, bbox in run_groundingdino_on_frame(
+            frame_path, model, processor)]
         detections_per_frame.append((frame_idx, detections))
 
     final_frames = [[] for _ in range(original_frame_count)]
     for frame_index, detections in detections_per_frame:
-        original_index = filtered_indices[frame_index] if 0 <= frame_index < len(filtered_indices) else frame_index
+        original_index = filtered_indices[frame_index] if 0 <= frame_index < len(
+            filtered_indices) else frame_index
         if 0 <= original_index < original_frame_count:
             final_frames[original_index] = detections
 
@@ -818,10 +859,13 @@ def get_local_room_assignment(item_name: str) -> str:
     """Lightweight rule-based mapping to group inventory items by room."""
     name = item_name.lower().strip()
 
-    bedroom_items = ["bed", "wardrobe", "closet", "mattress", "nightstand", "pillow", "blanket"]
-    kitchen_items = ["refrigerator", "fridge", "microwave", "oven", "stove", "dishwasher", "kettle", "toaster"]
+    bedroom_items = ["bed", "wardrobe", "closet",
+                     "mattress", "nightstand", "pillow", "blanket"]
+    kitchen_items = ["refrigerator", "fridge", "microwave",
+                     "oven", "stove", "dishwasher", "kettle", "toaster"]
     bathroom_items = ["toilet", "bathtub", "shower", "mirror"]
-    living_items = ["sofa", "couch", "chair", "armchair", "table", "dining table", "coffee table", "desk", "tv", "television", "monitor", "rug", "carpet", "curtain", "blinds", "fan", "ceiling fan", "light", "lamp", "chandelier", "bookshelf", "shelf", "picture frame", "painting", "plant", "potted plant"]
+    living_items = ["sofa", "couch", "chair", "armchair", "table", "dining table", "coffee table", "desk", "tv", "television", "monitor", "rug", "carpet",
+                    "curtain", "blinds", "fan", "ceiling fan", "light", "lamp", "chandelier", "bookshelf", "shelf", "picture frame", "painting", "plant", "potted plant"]
 
     if any(x in name for x in bedroom_items):
         return "Bedroom"
@@ -861,6 +905,7 @@ def merge_detections(detections_per_frame: List[List[str]]) -> List[Dict]:
     ]
     inventory.sort(key=lambda x: x["quantity"], reverse=True)
     return inventory
+
 
 if __name__ == "__main__":
     import uvicorn

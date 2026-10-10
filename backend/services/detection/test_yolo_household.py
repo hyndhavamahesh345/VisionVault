@@ -1,8 +1,8 @@
+from yolo_household import get_household_yolo_model
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from yolo_household import get_household_yolo_model
 
 print("Testing get_household_yolo_model()...")
 model = get_household_yolo_model()

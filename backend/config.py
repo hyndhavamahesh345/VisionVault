@@ -19,12 +19,13 @@ for d in [UPLOAD_DIR, FRAMES_DIR, OUTPUT_DIR, ANNOTATED_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # ── API / Model Config ────────────────────────────────────────────────────────
-USE_HYBRID         = os.getenv("USE_HYBRID", "true").lower() == "true"
-USE_GROUNDINGDINO  = False
-FLORENCE_MODEL     = os.getenv("FLORENCE_MODEL", "microsoft/Florence-2-base")
+USE_HYBRID = os.getenv("USE_HYBRID", "true").lower() == "true"
+USE_GROUNDINGDINO = False
+FLORENCE_MODEL = os.getenv("FLORENCE_MODEL", "microsoft/Florence-2-base")
 
-FAST_MODE    = os.getenv("FAST_MODE", "false").lower() == "true"
-YOLO_WEIGHTS = os.getenv("YOLO_WEIGHTS", str(BACKEND_DIR / "weights" / "yolo11s.pt"))
+FAST_MODE = os.getenv("FAST_MODE", "false").lower() == "true"
+YOLO_WEIGHTS = os.getenv("YOLO_WEIGHTS", str(
+    BACKEND_DIR / "weights" / "yolo11s.pt"))
 
 if FAST_MODE:
     logger.info("[Config] FAST_MODE enabled — applying faster defaults")
@@ -35,9 +36,9 @@ else:
 default_max_frames = "6"
 default_frame_quality = "60" if FAST_MODE else "80"
 
-MAX_FRAMES                = int(os.getenv("MAX_FRAMES", default_max_frames))
-FRAME_INTERVAL_SEC        = float(os.getenv("FRAME_INTERVAL_SEC", "1.0"))
-FRAME_QUALITY             = int(os.getenv("FRAME_QUALITY", default_frame_quality))
+MAX_FRAMES = int(os.getenv("MAX_FRAMES", default_max_frames))
+FRAME_INTERVAL_SEC = float(os.getenv("FRAME_INTERVAL_SEC", "1.0"))
+FRAME_QUALITY = int(os.getenv("FRAME_QUALITY", default_frame_quality))
 
 YOLO_CONF_THRESHOLD = float(os.getenv("YOLO_CONF", "0.08"))
 CLIP_SCORE_THRESHOLD = float(os.getenv("CLIP_SCORE", "0.25"))

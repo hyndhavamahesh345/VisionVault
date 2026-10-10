@@ -6,16 +6,18 @@ from services.detection.yolo_household import get_household_yolo_model, run_hous
 from services.video.quality_filter import frame_quality_check
 from services.tracking.bytetrack import run_bytetrack
 
+
 def run_simulated_pipeline(job_id: str, frames: List[str]) -> List[List[str]]:
     import random
     time.sleep(2)
     inventory = ["sofa", "tv", "chair", "bed", "refrigerator"]
     return [random.sample(inventory, k=random.randint(1, 3)) for _ in frames]
 
+
 def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tuple[str, List[List[str]]]:
     yolo = get_yolo_model()
     yolo_household = get_household_yolo_model()
-    
+
     if not yolo:
         return "simulated", run_simulated_pipeline(job_id, frames)
 
@@ -38,20 +40,24 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
     if yolo_household:
         from services.detection.florence import generate_dynamic_vocabulary
         from services.inventory.builder import HOUSEHOLD_OBJECTS
-        
+
         # 1. Ask Florence-2 to analyze the first frame and generate custom vocabulary
-        logger.info("[Fusion] Requesting dynamic vocabulary from Florence-2 for the first frame...")
+        logger.info(
+            "[Fusion] Requesting dynamic vocabulary from Florence-2 for the first frame...")
         dynamic_words = generate_dynamic_vocabulary(filtered_frames[0])
-        
+
         # 2. Combine our standard household objects with the dynamically discovered ones
-        combined_classes = list(set(HOUSEHOLD_OBJECTS + ["side profile air conditioner", "furniture"] + dynamic_words))
-        
+        combined_classes = list(set(
+            HOUSEHOLD_OBJECTS + ["side profile air conditioner", "furniture"] + dynamic_words))
+
         # 3. Inject the combined vocabulary into YOLO-World's brain
-        logger.info("[Fusion] Updating YOLO-World vocabulary with %d total classes", len(combined_classes))
+        logger.info(
+            "[Fusion] Updating YOLO-World vocabulary with %d total classes", len(combined_classes))
         yolo_household.set_classes(combined_classes)
-        
+
         # 4. Run the high-speed YOLO-World detector on all frames
-        tracked_sequence = run_household_yolo(yolo_household, filtered_frames, job_id=job_id)
+        tracked_sequence = run_household_yolo(
+            yolo_household, filtered_frames, job_id=job_id)
         sub = "florence2 + yolov8x-worldv2"
     else:
         # Fallback to base yolo
@@ -61,7 +67,7 @@ def run_hybrid_pipeline(job_id: str, video_path: str, frames: List[str]) -> Tupl
     # Compile tracks and filter out transients
     # Since we use agnostic_nms to prevent spatial duplicates, and max_counts to prevent temporal duplicates,
     # we can bypass strict temporal persistence filtering to ensure all objects are returned.
-    
+
     final_frames: List[List[str]] = [[] for _ in frames]
     for frame_idx, frame_tracks in enumerate(tracked_sequence):
         for track_id, info in frame_tracks.items():

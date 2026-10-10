@@ -15,6 +15,7 @@ minio_client = Minio(
     secure=MINIO_SECURE
 )
 
+
 def init_buckets():
     buckets = ["videos", "thumbnails", "reports"]
     for bucket in buckets:
@@ -24,6 +25,7 @@ def init_buckets():
                 logger.info("[MinIO] Created bucket '%s'", bucket)
         except Exception as e:
             logger.error("[MinIO] Failed to create bucket '%s': %s", bucket, e)
+
 
 def upload_video(job_id: str, file_path: str, ext: str) -> str:
     bucket = "videos"
@@ -35,6 +37,7 @@ def upload_video(job_id: str, file_path: str, ext: str) -> str:
     except Exception as e:
         logger.error("[MinIO] Upload failed for %s: %s", object_name, e)
         raise
+
 
 def download_video(object_name: str, download_path: str):
     bucket = "videos"
